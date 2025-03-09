@@ -7,6 +7,8 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\GovtLoanContoller;
 use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\PayrollRegister\UnpostedController;
+use App\Http\Controllers\CanteenDeductionController;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -68,4 +70,9 @@ Route::prefix('compensations')->group(function(){
     Route::get('list/{id}',[OtherIncomeController::class,'list']);
     Route::post('save',[OtherIncomeController::class,'save']);
     
+});
+
+Route::prefix('canteen-deduction')->group(function(){
+    Route::get('list/{id}',[CanteenDeductionController::class,'list']);
+    Route::post('save',[CanteenDeductionController::class,'save']);
 });
