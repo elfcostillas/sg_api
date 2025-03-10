@@ -26,14 +26,15 @@ class OtherIncomeController extends Controller
         $data = $request->all();
 
         $key = [
-            'biometric_id' => $data['biometric_id'],
             'period_id' => $data['period_id'],
+            'emp_id' => $data['id'],
         ];
+
         $data = [
             'earnings' => $data['earnings'],
             'retro_pay' => $data['retro_pay'],
             'remarks' => $data['remarks'],
-
+            'biometric_id' => $data['biometric_id'],
         ];
 
         $result = $this->repo->insertOrUpdate($key,$data);

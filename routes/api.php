@@ -72,6 +72,16 @@ Route::prefix('compensations')->group(function(){
     
 });
 
+Route::prefix('payroll-register')->group(function(){ 
+    Route::prefix('unposted')->group(function(){ 
+        Route::get('compute/{id}',[UnpostedController::class,'compute']);
+        // Route::post('save',[OtherIncomeController::class,'save']);
+        
+    });
+    // Route::post('save',[OtherIncomeController::class,'save']);
+    
+});
+
 Route::prefix('canteen-deduction')->group(function(){
     Route::get('list/{id}',[CanteenDeductionController::class,'list']);
     Route::post('save',[CanteenDeductionController::class,'save']);

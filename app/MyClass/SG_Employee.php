@@ -13,6 +13,8 @@ class SG_Employee
     private $period;
     private $dtr;
 
+    public $dynamic_deduction = [];
+
     protected $philrate;
 
     protected $rates = [
@@ -215,6 +217,8 @@ class SG_Employee
         $this->payreg['basic_pay'] = $this->getBasicPay();
 
         $this->payreg['gross_pay'] = $this->getGrossPay();
+
+        $this->getDeductions();
 
         //add to gross total gross_total
 
@@ -548,9 +552,9 @@ class SG_Employee
     {   
         $ded_array = [];
 
-        $install = DB::table("unposted_installments_sg")->select('deduction_type','amount')->where([['biometric_id','=',$this->info['biometric_id']],['period_id','=',$this->period->id]]);
+        $install = DB::connection('main')->table("unposted_installments_sg")->select('deduction_type','amount')->where([['emp_id','=',$this->info['id']],['period_id','=',$this->period->id]]);
 
-        $deductions = DB::table('deduction_types')
+        $deductions = DB::connection('main')->table('deduction_types')
                         ->select('description','deduction_type','amount')
                         ->joinSub($install,'deductions',function($join){
                             $join->on('deductions.deduction_type','=','deduction_types.id');
@@ -565,7 +569,9 @@ class SG_Employee
             }
         }
 
-        return $ded_array;
+        $this->dynamic_deduction = $ded_array;
+
+        // return $ded_array;
 
     }
 

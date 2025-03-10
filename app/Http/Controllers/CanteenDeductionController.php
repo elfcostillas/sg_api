@@ -28,10 +28,13 @@ class CanteenDeductionController extends Controller
         ];
 
         $data = [
+            'deductions' => $data['deductions'],
             'canteen_bpn' => $data['canteen_bpn'],
             'canteen_bps' => $data['canteen_bps'],
             'canteen_agg' => $data['canteen_agg'],
             'remarks2' => $data['remarks2'],
+            'emp_id' => $data['id'],
+            'canteen' =>  $data['canteen_bpn'] +  $data['canteen_bps'] + $data['canteen_agg']
         ];
 
         $result = $this->repo->insertOrUpdate($key,$data);

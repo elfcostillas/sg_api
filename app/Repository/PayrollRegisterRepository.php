@@ -41,7 +41,8 @@ class PayrollRegisterRepository
                 $join->on('employees.id','=','unposted_weekly_compensation.emp_id');
                 $join->on('payrollregister_unposted_weekly.period_id','=','unposted_weekly_compensation.period_id');
             })
-            ->select(DB::raw("dept_name,employee_name_vw.employee_name,job_title_name,payrollregister_unposted_weekly.*,retro_pay,earnings"))
+            ->select(DB::raw("dept_name,employee_name_vw.employee_name,job_title_name,payrollregister_unposted_weekly.*,
+                ifnull(retro_pay,0.00) retro_pay,ifnull(earnings,0.00) earnings,IFNULL(canteen_bpn,0.00) canteen_bpn,IFNULL(canteen_bps,0.00) canteen_bps,IFNULL(canteen_agg,0.00) canteen_agg"))
             ->where('payrollregister_unposted_weekly.period_id','=',$id)
             ->orderBy('departments.id','ASC')
             ->orderBy('employees.lastname','ASC')

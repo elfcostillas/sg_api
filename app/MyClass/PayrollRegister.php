@@ -92,6 +92,8 @@ class PayrollRegister
     {
         $tmp_loan = [];
 
+        DB::connection('main')->table('unposted_installments_sg')->where('period_id', '=', $this->period->id)->delete();
+
         $loans = DB::connection('main')
         ->table('deduction_installments_sg')
         ->leftJoin('posted_installments_sg','deduction_installments_sg.id','=','posted_installments_sg.deduction_id')
