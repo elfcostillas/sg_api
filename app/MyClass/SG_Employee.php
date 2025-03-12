@@ -14,6 +14,7 @@ class SG_Employee
     private $dtr;
 
     public $dynamic_deduction = [];
+    public $dynamic_govtloan = [];
 
     protected $philrate;
 
@@ -29,6 +30,7 @@ class SG_Employee
     ];
 
     public $payreg = [
+        'emp_id' => null,
         'emp_level' => null,
         'period_id' => null,
         'biometric_id' => null,
@@ -151,6 +153,8 @@ class SG_Employee
         $this->payreg['period_id'] = $this->period->id;
         $this->payreg['biometric_id'] = $this->info['biometric_id'];
         $this->payreg['user_id'] = 1;
+
+        $this->payreg['emp_id'] = $this->info['id'];
         
         $this->payreg['generated_on'] = now();
         $this->payreg['location_id'] = $this->info['location_id'];
@@ -219,14 +223,18 @@ class SG_Employee
         $this->payreg['gross_pay'] = $this->getGrossPay();
 
         $this->getDeductions();
+        $this->getGovtLoans();
 
         //add to gross total gross_total
 
         $other_earnings = $this->otherEarnings();
-
+  
         $this->computeGrossTotal($other_earnings);
 
+        $this->computeContribution($this->period);
+        $this->computeTotalDeduction($other_earnings);
 
+        $this->computeNetPay();
 
         // $this->payreg['vl_wpay_amount'] = round($this->rates['hourly_rate'] * $this->payreg['vl_wpay'],2);
         // $this->payreg['sl_wpay_amount'] = round($this->rates['hourly_rate'] * $this->payreg['sl_wpay'],2);
@@ -376,17 +384,20 @@ class SG_Employee
     }
 
     public function computeContribution($period){
-       
-        if($period->period_type==1){
+        
+        if($period->cut_off==1){
             $this->payreg['sss_prem'] = 0.00;
             $this->payreg['phil_prem'] = 0.00;
 
         }else{
-           
+            $monthly_credit = 26 * $this->rates['daily_rate'];
+
             $this->payreg['hdmf_contri'] = 0.00;
-            $this->payreg['sss_prem'] = ($this->info['deduct_sss']=='Y') ?  $this->computeSSSPrem($period) : 0.00;
+            $this->payreg['sss_prem'] = ($this->info['deduct_sss']=='Y') ?  $this->computeSSSPrem($monthly_credit) : 0.00;
             $this->payreg['phil_prem'] = ($this->info['deduct_phic']=='Y') ?  round(($this->rates['monthly_credit'] * ($this->philrate/100))/2,2) : 0.00;
             $this->payreg['sss_wisp'] = ($this->info['deduct_sss']=='Y') ?  $this->computeWISP() : 0.00;
+
+           
         }
     }
 
@@ -413,7 +424,7 @@ class SG_Employee
 
     public function computeSSSPrem($monthly_credit)
     {
-        $prem = DB::table('hris_sss_table_2025')->select('ee_share')
+        $prem = DB::connection('main')->table('hris_sss_table_2025')->select('ee_share')
                 ->whereRaw($monthly_credit." between range1 and range2")
                 ->first();
 
@@ -422,7 +433,7 @@ class SG_Employee
 
     public function computeWISP()
     {
-        $prem = DB::table('hris_sss_table_2025')->select('mpf_ee')
+        $prem = DB::connection('main')->table('hris_sss_table_2025')->select('mpf_ee')
                 ->whereRaw($this->rates['monthly_credit']." between range1 and range2")->first();
         return (float)$prem->mpf_ee;
     }
@@ -443,57 +454,49 @@ class SG_Employee
         $this->philrate = $rate;
     }
 
-    public function computeTotalDeduction($company,$govloan)
+    public function computeTotalDeduction($other_earnings)
     {
         $this->payreg['total_deduction'] = $this->payreg['hdmf_contri'] + $this->payreg['sss_prem'] + $this->payreg['phil_prem'];
-
-        foreach($company as $loan){
-            $this->payreg['total_deduction'] += $loan;
-        }
-
-        foreach($govloan as $gloan){
-            $this->payreg['total_deduction'] += $gloan;
-        }
-
-    }
-
-    public function computeGrossTotal($other_earn){
-        $this->payreg['gross_total'] = $this->payreg['gross_pay'];
-        if($this->payreg['pay_type']!='3'){
-            foreach($other_earn as $earn)
-            {
-                $this->payreg['gross_total'] += $earn;
-            }
-        }else {
-
-            $this->payreg['total_deduction'] = $this->payreg['hdmf_contri'] + $this->payreg['sss_prem'] + $this->payreg['phil_prem'];
            
-            if($other_earn){
-                $this->payreg['gross_total'] += $other_earn['earnings'] + $other_earn['retro_pay'];
-              
-                $this->payreg['total_deduction'] +=  $other_earn['deductions'] + $other_earn['canteen']   + $other_earn['cash_advance']   + $other_earn['office_account'];
+        if($other_earnings){
+            
+            $this->payreg['total_deduction'] +=  $other_earnings['deductions'] + $other_earnings['canteen']   + $other_earnings['cash_advance']; //  + $other_earnings['office_account'];
+        }
+
+        if($this->dynamic_deduction){
+            foreach($this->dynamic_deduction as $deductions_key => $value){
+                $this->payreg['total_deduction'] += $value;
             }
         }
-    }
 
-    public function computeGovContri($period)
-    {
-       
-        $monthly_credit = 26 * $this->rates['daily_rate'];
-
-        if($period->cut_off == 1){
-            $this->payreg['hdmf_contri'] = $this->info['hdmf_contri'];
-            $this->payreg['sss_prem'] = 0.00;
-            $this->payreg['phil_prem'] = 0.00;
-
-        }else{
-           
-            $this->payreg['hdmf_contri'] = 0.00;
-            $this->payreg['sss_prem'] = ($this->info['deduct_sss']=='Y') ?  $this->computeSSSPrem($monthly_credit) : 0.00;
-            $this->payreg['phil_prem'] = ($this->info['deduct_phic']=='Y') ?  round(($monthly_credit * ($this->philrate/100))/2,2) : 0.00;
-        }
         
+
     }
+
+    public function computeGrossTotal($other_earnings){
+        // $this->payreg['gross_total'] += $other_earn['earnings'] + $other_earn['retro_pay'];
+
+        $this->payreg['gross_total'] = $this->payreg['gross_pay'] + $other_earnings['earnings'] + $other_earnings['retro_pay'];
+    }
+
+    // public function computeGovContri($period)
+    // {
+    //     dd();
+    //     $monthly_credit = 26 * $this->rates['daily_rate'];
+
+    //     if($period->cut_off == 1){
+    //         $this->payreg['hdmf_contri'] = $this->info['hdmf_contri'];
+    //         $this->payreg['sss_prem'] = 0.00;
+    //         $this->payreg['phil_prem'] = 0.00;
+
+    //     }else{
+           
+    //         // $this->payreg['hdmf_contri'] = 0.00;
+    //         // $this->payreg['sss_prem'] = ($this->info['deduct_sss']=='Y') ?  $this->computeSSSPrem($monthly_credit) : 0.00;
+    //         // $this->payreg['phil_prem'] = ($this->info['deduct_phic']=='Y') ?  round(($monthly_credit * ($this->philrate/100))/2,2) : 0.00;
+    //     }
+        
+    // }
 
     public function computeNetPay()
     {
@@ -531,10 +534,16 @@ class SG_Employee
     {
         $earning_array = [
             'earnings' => 0,
-            'retro_pay' => 0     
+            'retro_pay' => 0,     
+
+            'deductions' => 0,
+            'canteen' => 0,
+            'cash_advance' => 0,
+            'office_account' => 0,
+
         ];
 
-        $earnings = DB::connection('main')->table('unposted_weekly_compensation')->select('earnings','retro_pay')
+        $earnings = DB::connection('main')->table('unposted_weekly_compensation')->select('earnings','retro_pay','deductions','canteen','cash_advance','office_account')
         ->where('period_id','=',$this->period->id)
         ->where('emp_id','=',$this->info['id'])
         ->first();
@@ -542,6 +551,11 @@ class SG_Employee
         $this->other_earnings = [
             'earnings' => ($earnings!=null) ? $earnings->earnings : 0,
             'retro_pay' => ($earnings!=null) ? $earnings->retro_pay : 0,
+
+            'deductions' =>  ($earnings!=null) ? $earnings->deductions : 0,
+            'canteen' =>  ($earnings!=null) ? $earnings->canteen : 0,
+            'cash_advance' =>  ($earnings!=null) ? $earnings->cash_advance : 0,
+            'office_account' =>  ($earnings!=null) ? $earnings->office_account : 0,
         ];
         
         return $this->other_earnings;
@@ -552,27 +566,61 @@ class SG_Employee
     {   
         $ded_array = [];
 
-        $install = DB::connection('main')->table("unposted_installments_sg")->select('deduction_type','amount')->where([['emp_id','=',$this->info['id']],['period_id','=',$this->period->id]]);
+        $install = DB::connection('main')->table("unposted_installments_sg")
+                ->select('deduction_type','amount')->where([['emp_id','=',$this->info['id']],['period_id','=',$this->period->id]]);
 
         $deductions = DB::connection('main')->table('deduction_types')
                         ->select('description','deduction_type','amount')
                         ->joinSub($install,'deductions',function($join){
                             $join->on('deductions.deduction_type','=','deduction_types.id');
                         })->orderBy('deduction_type')->get();
-       
-        foreach($deductions as $deduction){
-            if(array_key_exists($deduction->deduction_type,$ded_array)){
-                $ded_array[$deduction->deduction_type] += $deduction->amount;
-            }else{
-                $ded_array[$deduction->deduction_type] = 0;
-                $ded_array[$deduction->deduction_type] += $deduction->amount;
+        if(count($deductions)>0){
+            foreach($deductions as $deduction){
+                if(array_key_exists($deduction->deduction_type,$ded_array)){
+                    $ded_array[$deduction->deduction_type] += $deduction->amount;
+                }else{
+                    $ded_array[$deduction->deduction_type] = 0;
+                    $ded_array[$deduction->deduction_type] += $deduction->amount;
+                }
             }
-        }
-
-        $this->dynamic_deduction = $ded_array;
+    
+            $this->dynamic_deduction = $ded_array;
+        }                
+       
 
         // return $ded_array;
 
+    }
+
+    public function getGovtLoans()
+    {
+        $ded_array = [];
+
+        $install = DB::connection('main')->table("unposted_loans_sg")
+                ->select('deduction_type','amount')->where([['emp_id','=',$this->info['id']],['period_id','=',$this->period->id]]);
+
+        $deductions = DB::connection('main')->table('loan_types')
+                        ->select('description','deduction_type','amount')
+                        ->joinSub($install,'deductions',function($join){
+                            $join->on('deductions.deduction_type','=','loan_types.id');
+                        })->orderBy('deduction_type')->get();
+
+        if(count($deductions)>0){
+            foreach($deductions as $deduction){
+                if(array_key_exists($deduction->deduction_type,$ded_array)){
+                    $ded_array[$deduction->deduction_type] += $deduction->amount;
+                }else{
+                    $ded_array[$deduction->deduction_type] = 0;
+                    $ded_array[$deduction->deduction_type] += $deduction->amount;
+                }
+            }
+
+            $this->dynamic_govtloan = $ded_array;
+        }
+       
+       
+
+        
     }
 
    
