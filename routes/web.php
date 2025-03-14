@@ -19,6 +19,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('home', function () {
+    return response()->json([ 'page' => 'home'] );
+});
+
+
 Route::prefix('auth')->group(function(){
     Route::post('/login',LoginController::class)->middleware('guest');
     Route::post('/logout',LogoutController::class)->middleware('auth:sanctum');
