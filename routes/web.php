@@ -28,3 +28,11 @@ Route::prefix('auth')->group(function(){
     Route::post('/login',LoginController::class)->middleware('guest');
     Route::post('/logout',LogoutController::class)->middleware('auth:sanctum');
 });
+
+Route::get('test', function () {
+    try{
+        $y = 1 / 0;
+    }catch(Exception $e){
+        throw new Exception('divide 0');
+    }
+});

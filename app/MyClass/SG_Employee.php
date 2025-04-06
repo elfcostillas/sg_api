@@ -618,13 +618,7 @@ class SG_Employee
             $this->dynamic_govtloan = $ded_array;
         }
        
-       
-
-        
     }
-
-   
-
 
     /*
 

@@ -42,14 +42,20 @@ class PayrollRegister
     public function getSGEmployee(){
     
         $employees = $this->employee_repo->getSGEmployee();
-
+        //select rate from philhealth
+        $phic = DB::table('philhealth')->select('rate')->first();
+        
         foreach($employees as $employee)
         {
             array_push($this->processed_id,$employee->id);
 
             $e = new SG_Employee($employee,$this->period);
 
+            $e->setPhilRate($phic->rate);
+
             $dtr = $this->dtr_repo->getDTR($employee,$this->period);
+
+
 
             $e->setDTR($dtr);
 

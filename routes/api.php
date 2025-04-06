@@ -8,7 +8,7 @@ use App\Http\Controllers\GovtLoanContoller;
 use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\PayrollRegister\UnpostedController;
 use App\Http\Controllers\CanteenDeductionController;
-
+use App\Http\Controllers\PayrollRegister\PostedController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -75,8 +75,18 @@ Route::prefix('compensations')->group(function(){
 Route::prefix('payroll-register')->group(function(){ 
     Route::prefix('unposted')->group(function(){ 
         Route::get('compute/{id}',[UnpostedController::class,'compute']);
-        // Route::post('save',[OtherIncomeController::class,'save']);
+        Route::get('excel/{id}',[UnpostedController::class,'excel']);
+        Route::get('pdf/{id}',[UnpostedController::class,'pdf']);
+
+        Route::post('post',[UnpostedController::class,'postPayroll']);
+
+       
         
+    });
+
+    Route::prefix('posted')->group(function(){ 
+        Route::get('computed/{id}',[PostedController::class,'computed']);
+        // Route::post('unpost',[UnpostedController::class,'unpostPayroll']);
     });
     // Route::post('save',[OtherIncomeController::class,'save']);
     
